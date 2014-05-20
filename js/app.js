@@ -10,71 +10,64 @@ var app = (function() {
             $(e.target).closest('li').find('.details').toggle();
         });
 
-        buildData();
+        buildData(populateList);
     }
 
-    function buildData() {
-        //this function kicks off a chain of functions to get all of the data the page needs
-        loadPosterConfig();
-    }
-    
     function populateList() {
         var source = $('#show-list-template').html(),
             template = Handlebars.compile(source);
         $('#show-list-placeholder').html(template({shows: shows}));
     }
 
-    function loadPosterConfig() {
+    function buildData(callback) {
+        //this function kicks off a chain of functions to get all of the data the page needs
+        loadPosterConfig(callback);
+    }
+    
+    function loadPosterConfig(callback) {
         var url = baseUrl + 'configuration?callback=?';
 
         if (typeof basePosterUrl === 'undefined') {
             $.getJSON(url, {'api_key': apiKey}, function(response) {
                 basePosterUrl = response.images.secure_base_url + response.images.poster_sizes[2];
-                retrieveTopShows();
+                retrieveTopShows(callback);
             });
         }
     }
 
-    function retrieveTopShows() {
+    function retrieveTopShows(callback) {
         var url = baseUrl + 'tv/top_rated?callback=?';
 
         $.getJSON(url, {'api_key': apiKey}, function(response) {
-                $.each(response.results, function(i, show) {
+                _.each(response.results, function(show) {
                     shows.push({
                         id: show.id,
                         name: show.name,
                         rating: show.vote_average,
                         posterUrl: basePosterUrl + show.poster_path
                     });
-                    retrieveShowDescription(show.id);
+                    retrieveShowDescription(show.id, callback);
                 });
             }
         );
     }
 
-    function retrieveShowDescription(showId) {
+    function retrieveShowDescription(showId, callback) {
         var url = baseUrl + 'tv/' + showId + '?callback=?';
 
         $.getJSON(url, {'api_key': apiKey}, function(response) {
                 _.find(shows, {id: showId}).overview = response.overview;
-                populateList(); //TODO this shouldn't be called for every show like this...
+                if (typeof callback === 'function') {
+                    //there is probably a better way to handle this instead of redrawing the page for every show...
+                    callback();
+                }
             }
         );
     }
 
-    function getShows() {
-        return shows;
-    }
-
     return {
         init: init,
-        retrieveTopShows: retrieveTopShows,
-        retrieveShowDescription: retrieveShowDescription,
-        getTopShows: getShows
+        buildData: buildData
     };
 })();
 
-$(document).ready(function() {
-    'use strict';
-    app.init();
-});
