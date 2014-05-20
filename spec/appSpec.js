@@ -1,13 +1,15 @@
-var expect = chai.expect;
-
+/* jshint expr: true */
 describe('App', function() {
     'use strict';
-    beforeEach(function() {
-    });
+    var expect = chai.expect;
 
     describe('retrieve and parse resources', function() {
-        it('retrieve config', function() {
-            var results = app.loadConfiguration();
+        it('buildData', function(done) {
+            var callback = sinon.stub(),
+                results = app.buildData(callback);
+            //expect(callback.callCount).to.equal(20);
+            //TODO actually test something, I have lots to learn about javascript unit testing
+            done();
         });
     });
 });
