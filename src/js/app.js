@@ -3,12 +3,9 @@ var app = (function() {
     var baseUrl = 'https://api.themoviedb.org/3/',
         apiKey = 'f2c7335dd252082fb746119aede6e440',
         shows = [],
-        posterConfig;
+        basePosterUrl;
 
     function init() {
-        var source = $('#show-list-template').html(),
-            template = Handlebars.compile(source);
-
         $('#show-list-placeholder').on('click', 'li', function(e) {
             $(e.target).closest('li').find('.details').toggle();
         });
@@ -17,7 +14,8 @@ var app = (function() {
     }
 
     function buildData() {
-        retrieveTopShows(populateList);
+        //this function kicks off a chain of functions to get all of the data the page needs
+        loadPosterConfig();
     }
     
     function populateList() {
@@ -29,12 +27,10 @@ var app = (function() {
     function loadPosterConfig() {
         var url = baseUrl + 'configuration?callback=?';
 
-        if (typeof posterConfig === 'undefined') {
-            posterConfig = {};
+        if (typeof basePosterUrl === 'undefined') {
             $.getJSON(url, {'api_key': apiKey}, function(response) {
-                console.log(response);
-                posterConfig.baseUrl = response.images.secure_base_url;
-                posterConfig.size = response.images.poster_sizes[2];
+                basePosterUrl = response.images.secure_base_url + response.images.poster_sizes[2];
+                retrieveTopShows();
             });
         }
     }
@@ -43,37 +39,25 @@ var app = (function() {
         var url = baseUrl + 'tv/top_rated?callback=?';
 
         $.getJSON(url, {'api_key': apiKey}, function(response) {
-                console.log(response);
                 $.each(response.results, function(i, show) {
                     shows.push({
                         id: show.id,
                         name: show.name,
                         rating: show.vote_average,
-                        posterPath: show.poster_path
+                        posterUrl: basePosterUrl + show.poster_path
                     });
+                    retrieveShowDescription(show.id);
                 });
-                console.log(shows);
-                populateList();
             }
         );
     }
 
-    function retrieveShowDescriptions(shows) {
+    function retrieveShowDescription(showId) {
         var url = baseUrl + 'tv/' + showId + '?callback=?';
 
         $.getJSON(url, {'api_key': apiKey}, function(response) {
-                //grab response.overview
-                console.log(response);
-            }
-        );
-    }
-
-    function buildImdbLink(showId) {
-        var url = baseUrl + 'tv/' + showId + '/external_ids?callback=?';
-
-        $.getJSON(url, {'api_key': apiKey}, function(response) {
-                //grab response.imdb_id
-                console.log(response);
+                _.find(shows, {id: showId}).overview = response.overview;
+                populateList(); //TODO this shouldn't be called for every show like this...
             }
         );
     }
@@ -82,18 +66,11 @@ var app = (function() {
         return shows;
     }
 
-    function getPosterConfig() {
-        loadPosterConfig();
-        return posterConfig;
-    }
-
     return {
         init: init,
         retrieveTopShows: retrieveTopShows,
-        retrieveShowDescription: retrieveShowDescriptions,
-        buildImdbLink: buildImdbLink,
-        getTopShows: getShows,
-        getPosterConfiguration: getPosterConfig
+        retrieveShowDescription: retrieveShowDescription,
+        getTopShows: getShows
     };
 })();
 
