@@ -3,37 +3,38 @@ var app = (function() {
     var baseUrl = 'https://api.themoviedb.org/3/',
         apiKey = 'f2c7335dd252082fb746119aede6e440',
         shows = [],
-        configuration;
+        posterConfig;
 
     function init() {
         var source = $('#show-list-template').html(),
-            template = Handlebars.compile(source),
-            data = { shows: [
-                {
-                    name: 'Animaniacs', 
-                    rating: 8.1,
-                    posterUrl: 'http://image.tmdb.org/t/p/w185/lM0tNXNSJkf8acWWeHItyf1tsOy.jpg',
-                    overview: 'a show about things and stuff'
-                }
-            ]};
+            template = Handlebars.compile(source);
 
-        $('#show-list-placeholder')
-            .html(template(data))
-            .on('click', 'li', function(e) {
-                $(e.target).closest('li').find('.details').toggle();
-            });
+        $('#show-list-placeholder').on('click', 'li', function(e) {
+            $(e.target).closest('li').find('.details').toggle();
+        });
 
-        loadConfiguration();
+        buildData();
     }
 
-    function loadConfiguration() {
+    function buildData() {
+        retrieveTopShows(populateList);
+    }
+    
+    function populateList() {
+        var source = $('#show-list-template').html(),
+            template = Handlebars.compile(source);
+        $('#show-list-placeholder').html(template({shows: shows}));
+    }
+
+    function loadPosterConfig() {
         var url = baseUrl + 'configuration?callback=?';
 
-        if (typeof configuration === 'undefined') {
+        if (typeof posterConfig === 'undefined') {
+            posterConfig = {};
             $.getJSON(url, {'api_key': apiKey}, function(response) {
                 console.log(response);
-                //configuration.baseUrl = response.images.secure_base_url
-                //config.posterSize = response.images[2]
+                posterConfig.baseUrl = response.images.secure_base_url;
+                posterConfig.size = response.images.poster_sizes[2];
             });
         }
     }
@@ -42,17 +43,22 @@ var app = (function() {
         var url = baseUrl + 'tv/top_rated?callback=?';
 
         $.getJSON(url, {'api_key': apiKey}, function(response) {
-                //response.name
-                //response.vote_average
-                //response.vote_count
-                //response.poster_path
-                //response.id
                 console.log(response);
+                $.each(response.results, function(i, show) {
+                    shows.push({
+                        id: show.id,
+                        name: show.name,
+                        rating: show.vote_average,
+                        posterPath: show.poster_path
+                    });
+                });
+                console.log(shows);
+                populateList();
             }
         );
     }
 
-    function retrieveShowDescription(showId) {
+    function retrieveShowDescriptions(shows) {
         var url = baseUrl + 'tv/' + showId + '?callback=?';
 
         $.getJSON(url, {'api_key': apiKey}, function(response) {
@@ -76,13 +82,18 @@ var app = (function() {
         return shows;
     }
 
+    function getPosterConfig() {
+        loadPosterConfig();
+        return posterConfig;
+    }
+
     return {
         init: init,
-        loadConfiguration: loadConfiguration,
         retrieveTopShows: retrieveTopShows,
-        retrieveShowDescription: retrieveShowDescription,
+        retrieveShowDescription: retrieveShowDescriptions,
         buildImdbLink: buildImdbLink,
-        getTopShows: getShows
+        getTopShows: getShows,
+        getPosterConfiguration: getPosterConfig
     };
 })();
 
